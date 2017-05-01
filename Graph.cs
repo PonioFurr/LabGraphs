@@ -55,8 +55,8 @@ namespace Graph
         private List<Edge> edgeList;                      // список дуг
         private Dictionary<int, List<int>> edgeBunchList; // список пучков дуг в более удобном виде
 
-        public Graph(int[] I, int[] J, int[] C)
-        {
+        public Graph(int[] I, int[] J, int[] C, bool oriented)  // параметр oriented на самом деле просто приводит к тому,
+        {                                                       // что для каждой дуги будет создана противонаправленная дуга
             this.nodeList = new List<int>();
             this.edgeList = new List<Edge>();
             this.edgeBunchList = new Dictionary<int, List<int>>();
@@ -67,33 +67,44 @@ namespace Graph
             for (int k = 0; k < I.Length; k++)
             {
                 AddEdge(I[k], J[k], C[k]);
+
+                if (oriented)
+                        AddEdge(J[k], I[k], C[k]);
             }
         }
 
-        public Graph(List<Edge> edgeList)
+        public Graph(List<Edge> edgeList, bool oriented)
         {
             this.nodeList = new List<int>();
             this.edgeList = new List<Edge>();
             this.edgeBunchList = new Dictionary<int, List<int>>();
 
             foreach (Edge e in edgeList)
+            {
                 AddEdge(e.I, e.J, e.C);
+
+                if (oriented)
+                    AddEdge(e.J, e.I, e.C);
+            }
         }
 
         // Добавление дуги, также дополняет список вершин и список пучков дуг
         public void AddEdge(int I, int J, int C)
         {
-            if (!nodeList.Contains(J))
-                nodeList.Add(J);
+            if (!edgeList.Contains(new Edge(I, J, C)))
+            {
+                if (!nodeList.Contains(J))
+                    nodeList.Add(J);
 
-            if (!nodeList.Contains(I))
-                nodeList.Add(I);
+                if (!nodeList.Contains(I))
+                    nodeList.Add(I);
 
-            if(!edgeBunchList.Keys.Contains(I))
-                edgeBunchList.Add(I, new List<int>());
+                if (!edgeBunchList.Keys.Contains(I))
+                    edgeBunchList.Add(I, new List<int>());
 
-            edgeList.Add(new Edge(I, J, C));
-            edgeBunchList[I].Add(edgeList.Count-1);
+                edgeList.Add(new Edge(I, J, C));
+                edgeBunchList[I].Add(edgeList.Count - 1);
+            }
         }
 
         // Получение списка дуг в пучке
@@ -289,7 +300,7 @@ namespace Graph
             return map;
         }
 
-        // Алг. Краскала - работает
+        // Алг. Краскала - работает (предназначен для неориентированного графа)
         public Graph Kruskal()
         {
             Dictionary<int, int> color = new Dictionary<int, int>();
@@ -318,9 +329,28 @@ namespace Graph
                 }
             }
 
-            Graph resultGraph = new Graph(resultEdges);
+            Graph resultGraph = new Graph(resultEdges, true);
 
             return resultGraph;
+        }
+
+        static public Graph LabMethod(Graph g, int n1, int n2, int n3)
+        {
+            Graph tempG = g.Kruskal();
+
+            List<int> nodesWeNeed = new List<int>();
+
+            nodesWeNeed = tempG.DepthFirstSearch(n1, n2);
+            nodesWeNeed = new List<int>(nodesWeNeed.Union(tempG.DepthFirstSearch(n1, n3)));
+            nodesWeNeed = new List<int>(nodesWeNeed.Union(tempG.DepthFirstSearch(n2, n3)));
+
+            List<Edge> edgesWeNeed = new List<Edge>();
+            foreach (Edge e in tempG.edgeList)
+                if (nodesWeNeed.Contains(e.I) && nodesWeNeed.Contains(e.J))
+                    if (!edgesWeNeed.Contains(e))
+                        edgesWeNeed.Add(e);
+
+            return new Graph(edgesWeNeed, true);
         }
     }
 }
